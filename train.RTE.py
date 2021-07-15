@@ -38,9 +38,9 @@ from scipy.special import softmax
 # from scipy.stats import pearsonr, spearmanr
 # from sklearn.metrics import matthews_corrcoef, f1_score
 
-from transformers.tokenization_roberta import RobertaTokenizer
+from transformers.models.roberta.tokenization_roberta import RobertaTokenizer
 from transformers.optimization import AdamW
-from transformers.modeling_roberta import RobertaModel#RobertaForSequenceClassification
+from transformers.models.roberta.modeling_roberta import RobertaModel
 
 # from transformers.modeling_bert import BertModel
 # from transformers.tokenization_bert import BertTokenizer
