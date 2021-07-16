@@ -148,7 +148,7 @@ class DataProcessor(object):
 class RteProcessor(DataProcessor):
     """Processor for the RTE data set (GLUE version)."""
 
-    def generate_pretrain_examples(input_examples, pretrain_sample_size):
+    def generate_pretrain_examples(self, input_examples, pretrain_sample_size):
         examples=[]
         for example in input_examples:
             sent_1 = example.text_a
