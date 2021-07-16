@@ -148,11 +148,11 @@ class DataProcessor(object):
 class RteProcessor(DataProcessor):
     """Processor for the RTE data set (GLUE version)."""
 
-    def generate_pretrain_examples(example_list, pretrain_sample_size):
+    def generate_pretrain_examples(input_examples, pretrain_sample_size):
         examples=[]
-        for examples in example_list:
-            sent_1 = examples.text_a
-            sent_2 = examples.text_b
+        for example in input_examples:
+            sent_1 = example.text_a
+            sent_2 = example.text_b
             for sent in [sent_1, sent_2]:
                 wordlist = sent.strip().split()
                 sent_len = len(wordlist)
@@ -573,7 +573,7 @@ def main():
     dev_examples = processor.get_RTE_as_dev('/export/home/Dataset/glue_data/RTE/dev.tsv')
     test_examples = processor.get_RTE_as_test('/export/home/Dataset/RTE/test_RTE_1235.txt')
 
-    pretrain_examples = processor.generate_pretrain_examples([train_examples, dev_examples, test_examples], args.pretrain_sample_size)
+    pretrain_examples = processor.generate_pretrain_examples(train_examples+dev_examples+test_examples, args.pretrain_sample_size)
     label_list = ["entailment", "not_entailment"]
     # train_examples = get_data_hulu_fewshot('train', 5)
     # train_examples, dev_examples, test_examples, label_list = load_CLINC150_with_specific_domain_sequence(args.DomainName, args.kshot, augment=False)
