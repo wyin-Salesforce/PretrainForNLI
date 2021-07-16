@@ -148,6 +148,27 @@ class DataProcessor(object):
 class RteProcessor(DataProcessor):
     """Processor for the RTE data set (GLUE version)."""
 
+    def generate_pretrain_examples(example_list, pretrain_sample_size):
+        examples=[]
+        for examples in example_list:
+            sent_1 = examples.text_a
+            sent_2 = examples.text_b
+            for sent in [sent_1, sent_2]:
+                wordlist = sent.strip().split()
+                sent_len = len(wordlist)
+                for _ in range(pretrain_sample_size):
+                    pos_neg_points = random.sample(range(1, sent_len-1), 2)
+                    pos_point, neg_point = pos_neg_points[0], pos_neg_points[1]
+                    pos_left_sent = ' '.join(wordlist[:pos_point])
+                    pos_right_sent = ' '.join(wordlist[pos_point:])
+                    neg_right_sent = ' '.join(wordlist[neg_point:])
+
+                    examples.append(
+                        InputExample(guid='pretrain', text_a=pos_left_sent, text_b=pos_right_sent, label='entailment'))
+                    examples.append(
+                        InputExample(guid='pretrain', text_a=pos_left_sent, text_b=neg_right_sent, label='not_entailment'))
+        return examples
+
 
     def get_RTE_as_train(self, filename):
         '''
@@ -172,36 +193,7 @@ class RteProcessor(DataProcessor):
         print('loaded  size:', line_co)
         return examples
 
-    def get_RTE_as_train_k_shot(self, filename, k_shot):
-        '''
-        can read the training file, dev and test file
-        '''
-        examples_entail=[]
-        examples_non_entail=[]
-        readfile = codecs.open(filename, 'r', 'utf-8')
-        line_co=0
-        for row in readfile:
-            if line_co>0:
-                line=row.strip().split('\t')
-                guid = "train-"+str(line_co-1)
-                text_a = line[1].strip()
-                text_b = line[2].strip()
-                label = 'entailment' if line[3].strip()=='entailment' else 'not_entailment' #["entailment", "not_entailment"]
-                if label == 'entailment':
-                    examples_entail.append(
-                        InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-                else:
-                    examples_non_entail.append(
-                        InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-            line_co+=1
-        readfile.close()
-        print('loaded  entail size:', len(examples_entail), 'non-entail size:', len(examples_non_entail))
-        '''sampling'''
-        if k_shot > 99999:
-            return examples_entail+examples_non_entail
-        else:
-            sampled_examples = random.sample(examples_entail, k_shot)+random.sample(examples_non_entail, k_shot)
-            return sampled_examples
+
 
     def get_RTE_as_dev(self, filename):
         '''
@@ -411,7 +403,31 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
 
 
 
+def examples_to_dataloader(examples, label_list, max_seq_length, tokenizer, output_mode, batch_size, sample_type='random'):
 
+    dev_features = convert_examples_to_features(
+        examples, label_list, max_seq_length, tokenizer, output_mode,
+        cls_token_at_end=False,#bool(args.model_type in ['xlnet']),            # xlnet has a cls token at the end
+        cls_token=tokenizer.cls_token,
+        cls_token_segment_id=0,#2 if args.model_type in ['xlnet'] else 0,
+        sep_token=tokenizer.sep_token,
+        sep_token_extra=True,#bool(args.model_type in ['roberta']),           # roberta uses an extra separator b/w pairs of sentences, cf. github.com/pytorch/fairseq/commit/1684e166e3da03f5b600dbb7855cb98ddfcd0805
+        pad_on_left=False,#bool(args.model_type in ['xlnet']),                 # pad on the left for xlnet
+        pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
+        pad_token_segment_id=0)#4 if args.model_type in ['xlnet'] else 0,)
+
+    dev_all_input_ids = torch.tensor([f.input_ids for f in dev_features], dtype=torch.long)
+    dev_all_input_mask = torch.tensor([f.input_mask for f in dev_features], dtype=torch.long)
+    dev_all_segment_ids = torch.tensor([f.segment_ids for f in dev_features], dtype=torch.long)
+    dev_all_label_ids = torch.tensor([f.label_id for f in dev_features], dtype=torch.long)
+
+    dev_data = TensorDataset(dev_all_input_ids, dev_all_input_mask, dev_all_segment_ids, dev_all_label_ids)
+    if sample_type == 'random':
+        dev_sampler = RandomSampler(dev_data)
+    else:
+        dev_sampler = SequentialSampler(dev_data)
+    dev_dataloader = DataLoader(dev_data, sampler=dev_sampler, batch_size=batch_size)
+    return dev_dataloader
 
 
 
@@ -441,7 +457,7 @@ def main():
                         action='store_true',
                         help="Whether to run training.")
 
-    parser.add_argument('--kshot',
+    parser.add_argument('--pretrain_epochs',
                         type=int,
                         default=5,
                         help="random seed for initialization")
@@ -482,6 +498,10 @@ def main():
     parser.add_argument('--seed',
                         type=int,
                         default=42,
+                        help="random seed for initialization")
+    parser.add_argument('--pretrain_sample_size',
+                        type=int,
+                        default=50,
                         help="random seed for initialization")
     parser.add_argument('--gradient_accumulation_steps',
                         type=int,
@@ -549,14 +569,17 @@ def main():
     output_mode = output_modes[task_name]
 
 
-    train_examples = processor.get_RTE_as_train_k_shot('/export/home/Dataset/glue_data/RTE/train.tsv', args.kshot) #train_pu_half_v1.txt
+    train_examples = processor.get_RTE_as_train('/export/home/Dataset/glue_data/RTE/train.tsv') #train_pu_half_v1.txt
     dev_examples = processor.get_RTE_as_dev('/export/home/Dataset/glue_data/RTE/dev.tsv')
     test_examples = processor.get_RTE_as_test('/export/home/Dataset/RTE/test_RTE_1235.txt')
+
+    pretrain_examples = generate_pretrain_examples([train_examples, dev_examples, test_examples], args.pretrain_sample_size)
     label_list = ["entailment", "not_entailment"]
     # train_examples = get_data_hulu_fewshot('train', 5)
     # train_examples, dev_examples, test_examples, label_list = load_CLINC150_with_specific_domain_sequence(args.DomainName, args.kshot, augment=False)
     num_labels = len(label_list)
     print('num_labels:', num_labels, 'training size:', len(train_examples), 'dev size:', len(dev_examples), 'test size:', len(test_examples))
+    print('pretrain size:', len(pretrain_examples))
 
     num_train_optimization_steps = None
     num_train_optimization_steps = int(
@@ -583,74 +606,34 @@ def main():
     max_test_acc = 0.0
     max_dev_acc = 0.0
     if args.do_train:
-        train_features = convert_examples_to_features(
-            train_examples, label_list, args.max_seq_length, tokenizer, output_mode,
-            cls_token_at_end=False,#bool(args.model_type in ['xlnet']),            # xlnet has a cls token at the end
-            cls_token=tokenizer.cls_token,
-            cls_token_segment_id=0,#2 if args.model_type in ['xlnet'] else 0,
-            sep_token=tokenizer.sep_token,
-            sep_token_extra=True,#bool(args.model_type in ['roberta']),           # roberta uses an extra separator b/w pairs of sentences, cf. github.com/pytorch/fairseq/commit/1684e166e3da03f5b600dbb7855cb98ddfcd0805
-            pad_on_left=False,#bool(args.model_type in ['xlnet']),                 # pad on the left for xlnet
-            pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
-            pad_token_segment_id=0)#4 if args.model_type in ['xlnet'] else 0,)
+        pretrain_dataloader = examples_to_dataloader(pretrain_examples, label_list, args.max_seq_length, tokenizer, output_mode, args.train_batch_size, sample_type='random')
+        train_dataloader = examples_to_dataloader(train_examples, label_list, args.max_seq_length, tokenizer, output_mode, args.train_batch_size, sample_type='random')
+        dev_dataloader = examples_to_dataloader(dev_examples, label_list, args.max_seq_length, tokenizer, output_mode, args.eval_batch_size, sample_type='sequential')
+        test_dataloader = examples_to_dataloader(test_examples, label_list, args.max_seq_length, tokenizer, output_mode, args.eval_batch_size, sample_type='sequential')
 
-        '''load dev set'''
-        dev_features = convert_examples_to_features(
-            dev_examples, label_list, args.max_seq_length, tokenizer, output_mode,
-            cls_token_at_end=False,#bool(args.model_type in ['xlnet']),            # xlnet has a cls token at the end
-            cls_token=tokenizer.cls_token,
-            cls_token_segment_id=0,#2 if args.model_type in ['xlnet'] else 0,
-            sep_token=tokenizer.sep_token,
-            sep_token_extra=True,#bool(args.model_type in ['roberta']),           # roberta uses an extra separator b/w pairs of sentences, cf. github.com/pytorch/fairseq/commit/1684e166e3da03f5b600dbb7855cb98ddfcd0805
-            pad_on_left=False,#bool(args.model_type in ['xlnet']),                 # pad on the left for xlnet
-            pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
-            pad_token_segment_id=0)#4 if args.model_type in ['xlnet'] else 0,)
-
-        dev_all_input_ids = torch.tensor([f.input_ids for f in dev_features], dtype=torch.long)
-        dev_all_input_mask = torch.tensor([f.input_mask for f in dev_features], dtype=torch.long)
-        dev_all_segment_ids = torch.tensor([f.segment_ids for f in dev_features], dtype=torch.long)
-        dev_all_label_ids = torch.tensor([f.label_id for f in dev_features], dtype=torch.long)
-
-        dev_data = TensorDataset(dev_all_input_ids, dev_all_input_mask, dev_all_segment_ids, dev_all_label_ids)
-        dev_sampler = SequentialSampler(dev_data)
-        dev_dataloader = DataLoader(dev_data, sampler=dev_sampler, batch_size=args.eval_batch_size)
+        '''pretraining'''
+        for _ in trange(args.pretrain_epochs, desc="pretrain_epochs"):
+            for step, batch in enumerate(tqdm(pretrain_dataloader, desc="Iteration")):
+                model.train()
+                batch = tuple(t.to(device) for t in batch)
+                input_ids, input_mask, segment_ids, label_ids = batch
 
 
-        '''load test set'''
-        test_features = convert_examples_to_features(
-            test_examples, label_list, args.max_seq_length, tokenizer, output_mode,
-            cls_token_at_end=False,#bool(args.model_type in ['xlnet']),            # xlnet has a cls token at the end
-            cls_token=tokenizer.cls_token,
-            cls_token_segment_id=0,#2 if args.model_type in ['xlnet'] else 0,
-            sep_token=tokenizer.sep_token,
-            sep_token_extra=True,#bool(args.model_type in ['roberta']),           # roberta uses an extra separator b/w pairs of sentences, cf. github.com/pytorch/fairseq/commit/1684e166e3da03f5b600dbb7855cb98ddfcd0805
-            pad_on_left=False,#bool(args.model_type in ['xlnet']),                 # pad on the left for xlnet
-            pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
-            pad_token_segment_id=0)#4 if args.model_type in ['xlnet'] else 0,)
+                logits = model(input_ids, input_mask)
+                loss_fct = CrossEntropyLoss()
 
-        eval_all_input_ids = torch.tensor([f.input_ids for f in test_features], dtype=torch.long)
-        eval_all_input_mask = torch.tensor([f.input_mask for f in test_features], dtype=torch.long)
-        eval_all_segment_ids = torch.tensor([f.segment_ids for f in test_features], dtype=torch.long)
-        eval_all_label_ids = torch.tensor([f.label_id for f in test_features], dtype=torch.long)
+                loss = loss_fct(logits.view(-1, num_labels), label_ids.view(-1))
 
-        eval_data = TensorDataset(eval_all_input_ids, eval_all_input_mask, eval_all_segment_ids, eval_all_label_ids)
-        eval_sampler = SequentialSampler(eval_data)
-        test_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
+                if n_gpu > 1:
+                    loss = loss.mean() # mean() to average on multi-gpu.
+                if args.gradient_accumulation_steps > 1:
+                    loss = loss / args.gradient_accumulation_steps
 
-        logger.info("***** Running training *****")
-        logger.info("  Num examples = %d", len(train_examples))
-        logger.info("  Batch size = %d", args.train_batch_size)
-        logger.info("  Num steps = %d", num_train_optimization_steps)
-        all_input_ids = torch.tensor([f.input_ids for f in train_features], dtype=torch.long)
-        all_input_mask = torch.tensor([f.input_mask for f in train_features], dtype=torch.long)
-        all_segment_ids = torch.tensor([f.segment_ids for f in train_features], dtype=torch.long)
-        all_label_ids = torch.tensor([f.label_id for f in train_features], dtype=torch.long)
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
 
-        train_data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
-        train_sampler = RandomSampler(train_data)
-
-        train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=args.train_batch_size)
-
+        '''fine-tune'''
         iter_co = 0
         final_test_performance = 0.0
         for _ in trange(int(args.num_train_epochs), desc="Epoch"):
@@ -755,7 +738,7 @@ if __name__ == "__main__":
 
 '''
 mixup:
-CUDA_VISIBLE_DEVICES=0 python -u train.RTE.py --task_name rte --do_train --do_lower_case --num_train_epochs 20 --train_batch_size 5 --eval_batch_size 32 --learning_rate 1e-6 --max_seq_length 128 --seed 42 --kshot 100000
+CUDA_VISIBLE_DEVICES=0 python -u train.RTE.py --task_name rte --do_train --do_lower_case --num_train_epochs 20 --pretrain_epochs 1 --pretrain_sample_size 1 --train_batch_size 5 --eval_batch_size 32 --learning_rate 1e-6 --max_seq_length 128 --seed 42 
 
 
 '''
