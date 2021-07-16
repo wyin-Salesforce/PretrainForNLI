@@ -156,6 +156,7 @@ class RteProcessor(DataProcessor):
             for sent in [sent_1, sent_2]:
                 wordlist = sent.strip().split()
                 sent_len = len(wordlist)
+                print('sent_len:', sent_len, sent)
                 for _ in range(pretrain_sample_size):
                     pos_neg_points = random.sample(range(1, sent_len-1), 2)
                     pos_point, neg_point = pos_neg_points[0], pos_neg_points[1]
