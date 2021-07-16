@@ -472,6 +472,10 @@ def main():
                         default=16,
                         type=int,
                         help="Total batch size for training.")
+    parser.add_argument("--pretrain_batch_size",
+                        default=16,
+                        type=int,
+                        help="Total batch size for training.")
     parser.add_argument("--eval_batch_size",
                         default=64,
                         type=int,
@@ -607,7 +611,7 @@ def main():
     max_test_acc = 0.0
     max_dev_acc = 0.0
     if args.do_train:
-        pretrain_dataloader = examples_to_dataloader(pretrain_examples, label_list, args.max_seq_length, tokenizer, output_mode, args.train_batch_size, sample_type='random')
+        pretrain_dataloader = examples_to_dataloader(pretrain_examples, label_list, args.max_seq_length, tokenizer, output_mode, args.pretrain_batch_size, sample_type='random')
         train_dataloader = examples_to_dataloader(train_examples, label_list, args.max_seq_length, tokenizer, output_mode, args.train_batch_size, sample_type='random')
         dev_dataloader = examples_to_dataloader(dev_examples, label_list, args.max_seq_length, tokenizer, output_mode, args.eval_batch_size, sample_type='sequential')
         test_dataloader = examples_to_dataloader(test_examples, label_list, args.max_seq_length, tokenizer, output_mode, args.eval_batch_size, sample_type='sequential')
@@ -739,7 +743,7 @@ if __name__ == "__main__":
 
 '''
 mixup:
-CUDA_VISIBLE_DEVICES=0 python -u train.RTE.py --task_name rte --do_train --do_lower_case --num_train_epochs 20 --pretrain_epochs 1 --pretrain_sample_size 1 --train_batch_size 5 --eval_batch_size 32 --learning_rate 1e-6 --max_seq_length 128 --seed 42
+CUDA_VISIBLE_DEVICES=0 python -u train.RTE.py --task_name rte --do_train --do_lower_case --num_train_epochs 20 --pretrain_epochs 1 --pretrain_sample_size 1 --train_batch_size 5 --pretrain_batch_size 50 --eval_batch_size 32 --learning_rate 1e-6 --max_seq_length 128 --seed 42
 
 
 '''
