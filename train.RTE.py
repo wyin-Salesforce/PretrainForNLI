@@ -573,7 +573,7 @@ def main():
     dev_examples = processor.get_RTE_as_dev('/export/home/Dataset/glue_data/RTE/dev.tsv')
     test_examples = processor.get_RTE_as_test('/export/home/Dataset/RTE/test_RTE_1235.txt')
 
-    pretrain_examples = generate_pretrain_examples([train_examples, dev_examples, test_examples], args.pretrain_sample_size)
+    pretrain_examples = processor.generate_pretrain_examples([train_examples, dev_examples, test_examples], args.pretrain_sample_size)
     label_list = ["entailment", "not_entailment"]
     # train_examples = get_data_hulu_fewshot('train', 5)
     # train_examples, dev_examples, test_examples, label_list = load_CLINC150_with_specific_domain_sequence(args.DomainName, args.kshot, augment=False)
@@ -738,7 +738,7 @@ if __name__ == "__main__":
 
 '''
 mixup:
-CUDA_VISIBLE_DEVICES=0 python -u train.RTE.py --task_name rte --do_train --do_lower_case --num_train_epochs 20 --pretrain_epochs 1 --pretrain_sample_size 1 --train_batch_size 5 --eval_batch_size 32 --learning_rate 1e-6 --max_seq_length 128 --seed 42 
+CUDA_VISIBLE_DEVICES=0 python -u train.RTE.py --task_name rte --do_train --do_lower_case --num_train_epochs 20 --pretrain_epochs 1 --pretrain_sample_size 1 --train_batch_size 5 --eval_batch_size 32 --learning_rate 1e-6 --max_seq_length 128 --seed 42
 
 
 '''
