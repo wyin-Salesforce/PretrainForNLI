@@ -165,9 +165,9 @@ class RteProcessor(DataProcessor):
                         neg_right_sent = ' '.join(wordlist[neg_point:])
 
                         examples.append(
-                            InputExample(guid='pretrain', text_a=pos_left_sent, text_b=pos_right_sent, label='entailment'))
+                            InputExample(guid='pretrain', text_a=pos_left_sent, text_b=pos_right_sent, label="1"))
                         examples.append(
-                            InputExample(guid='pretrain', text_a=pos_left_sent, text_b=neg_right_sent, label='not_entailment'))
+                            InputExample(guid='pretrain', text_a=pos_left_sent, text_b=neg_right_sent, label="0"))
         return examples
 
 
@@ -530,8 +530,7 @@ def main():
     test_examples = processor.get_MRPC_file('/export/share/wenpeng/glue_data/MRPC/msr_paraphrase_test.txt')
 
 
-    print(train_examples[0].label)
-    exit(0)
+
     pretrain_examples = processor.generate_pretrain_examples(train_examples+dev_examples+test_examples, args.pretrain_sample_size)
     label_list = ["0", "1"]
     # train_examples = get_data_hulu_fewshot('train', 5)
