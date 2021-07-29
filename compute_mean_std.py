@@ -5,7 +5,7 @@ import statistics
 
 
 # initializing list
-test_list = [82.19,82.99,81.09,82.09
+test_list = [81.42,81.92,82.82,83.26
 ]
 
 print('sum:', sum(test_list))
