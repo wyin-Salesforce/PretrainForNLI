@@ -529,6 +529,9 @@ def main():
     dev_examples = processor.get_MRPC_file('/export/share/wenpeng/glue_data/MRPC/dev.tsv')
     test_examples = processor.get_MRPC_file('/export/share/wenpeng/glue_data/MRPC/msr_paraphrase_test.txt')
 
+
+    print(train_examples[0].label)
+    exit(0)
     pretrain_examples = processor.generate_pretrain_examples(train_examples+dev_examples+test_examples, args.pretrain_sample_size)
     label_list = ["0", "1"]
     # train_examples = get_data_hulu_fewshot('train', 5)
