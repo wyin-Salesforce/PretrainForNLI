@@ -553,7 +553,7 @@ def main():
     # test_examples = processor.get_RTE_as_test('/export/home/Dataset/RTE/test_RTE_1235.txt')
 
     pretrain_examples = processor.generate_threeway_pretrain_examples(train_examples+dev_examples, args.pretrain_sample_size)
-
+    pretrain_examples = random.sample(pretrain_examples, len(train_examples))
     label_list = ["entailment", "neutral", "contradiction"]
     # train_examples = get_data_hulu_fewshot('train', 5)
     # train_examples, dev_examples, test_examples, label_list = load_CLINC150_with_specific_domain_sequence(args.DomainName, args.kshot, augment=False)
