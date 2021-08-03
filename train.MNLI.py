@@ -545,14 +545,14 @@ def main():
     processor = processors[task_name]()
     output_mode = output_modes[task_name]
 
-    threeway_train_examples, threeway_dev_examples = processor.get_MNLI_train_and_dev('/export/home/Dataset/glue_data/MNLI/train.tsv', ['/export/home/Dataset/glue_data/MNLI/dev_mismatched.tsv', '/export/home/Dataset/glue_data/MNLI/dev_matched.tsv'])
+    train_examples, dev_examples = processor.get_MNLI_train_and_dev('/export/home/Dataset/glue_data/MNLI/train.tsv', ['/export/home/Dataset/glue_data/MNLI/dev_mismatched.tsv', '/export/home/Dataset/glue_data/MNLI/dev_matched.tsv'])
 
 
     # train_examples = processor.get_RTE_as_train('/export/home/Dataset/glue_data/RTE/train.tsv') #train_pu_half_v1.txt
     # dev_examples = processor.get_RTE_as_dev('/export/home/Dataset/glue_data/RTE/dev.tsv')
     # test_examples = processor.get_RTE_as_test('/export/home/Dataset/RTE/test_RTE_1235.txt')
 
-    pretrain_examples = processor.generate_threeway_pretrain_examples(threeway_train_examples+threeway_dev_examples, args.pretrain_sample_size)
+    pretrain_examples = processor.generate_threeway_pretrain_examples(train_examples+dev_examples, args.pretrain_sample_size)
     pretrain_examples = pretrain_examples[:5000]
     label_list = ["entailment", "neutral", "contradiction"]
     # train_examples = get_data_hulu_fewshot('train', 5)
