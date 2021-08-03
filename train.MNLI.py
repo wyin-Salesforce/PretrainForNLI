@@ -553,7 +553,7 @@ def main():
     # test_examples = processor.get_RTE_as_test('/export/home/Dataset/RTE/test_RTE_1235.txt')
 
     pretrain_examples = processor.generate_threeway_pretrain_examples(train_examples+dev_examples, args.pretrain_sample_size)
-    pretrain_examples = pretrain_examples[:5000]
+
     label_list = ["entailment", "neutral", "contradiction"]
     # train_examples = get_data_hulu_fewshot('train', 5)
     # train_examples, dev_examples, test_examples, label_list = load_CLINC150_with_specific_domain_sequence(args.DomainName, args.kshot, augment=False)
@@ -704,7 +704,7 @@ if __name__ == "__main__":
 
 '''
 mixup:
-CUDA_VISIBLE_DEVICES=0 python -u train.MNLI.py --task_name rte --do_train --do_lower_case --num_train_epochs 20 --pretrain_epochs 1 --pretrain_sample_size 1 --train_batch_size 5 --pretrain_batch_size 50 --eval_batch_size 32 --learning_rate 1e-6 --max_seq_length 128 --seed 42
+CUDA_VISIBLE_DEVICES=0 python -u train.MNLI.py --task_name rte --do_train --do_lower_case --num_train_epochs 10 --pretrain_epochs 10 --pretrain_sample_size 1 --train_batch_size 5 --pretrain_batch_size 50 --eval_batch_size 32 --learning_rate 1e-6 --max_seq_length 128 --seed 42
 
 
 '''
