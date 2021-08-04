@@ -547,11 +547,6 @@ def main():
 
     train_examples, dev_examples = processor.get_MNLI_train_and_dev('/export/home/Dataset/glue_data/MNLI/train.tsv', ['/export/home/Dataset/glue_data/MNLI/dev_mismatched.tsv', '/export/home/Dataset/glue_data/MNLI/dev_matched.tsv'])
 
-
-    # train_examples = processor.get_RTE_as_train('/export/home/Dataset/glue_data/RTE/train.tsv') #train_pu_half_v1.txt
-    # dev_examples = processor.get_RTE_as_dev('/export/home/Dataset/glue_data/RTE/dev.tsv')
-    # test_examples = processor.get_RTE_as_test('/export/home/Dataset/RTE/test_RTE_1235.txt')
-
     pretrain_examples = processor.generate_threeway_pretrain_examples(train_examples+dev_examples, args.pretrain_sample_size)
     pretrain_examples = random.sample(pretrain_examples, len(train_examples))
     label_list = ["entailment", "neutral", "contradiction"]
@@ -688,7 +683,7 @@ def main():
                 model_to_save = (
                     model.module if hasattr(model, "module") else model
                 )  # Take care of distributed/parallel training
-                store_transformers_models(model_to_save, tokenizer, '/export/home/Dataset/BERT_pretrained_mine/PretrainForNLI',  'MNLI_pretrain_epoch_'+str(args.pretrain_epochs)+'_finetune_epoch_'+str(fine_tune_epoch)+'_dev_acc_'+str(max_dev_acc)+'.pt')
+                store_transformers_models(model_to_save, tokenizer, '/export/home/Dataset/BERT_pretrained_mine/PretrainForNLI',  'MNLI_pretrain_epoch_'+str(args.pretrain_epochs)+'_finetune_epoch_'+str(fine_tune_epoch)+'_seed_'+str(args.seed)+'_dev_acc_'+str(max_dev_acc)+'.pt')
 
 
             else:
